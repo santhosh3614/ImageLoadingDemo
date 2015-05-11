@@ -23,6 +23,9 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import butterknife.ButterKnife;
+import butterknife.InjectView;
+
 
 public class MainActivity extends ListActivity {
 
@@ -95,9 +98,7 @@ public class MainActivity extends ListActivity {
             final ViewHolder holder;
             if (convertView == null) {
                 view = inflater.inflate(R.layout.item_list_image, parent, false);
-                holder = new ViewHolder();
-                holder.text = (TextView) view.findViewById(R.id.text);
-                holder.image = (ImageView) view.findViewById(R.id.image);
+                holder = new ViewHolder(view);
                 view.setTag(holder);
             } else {
                 holder = (ViewHolder) view.getTag();
@@ -128,8 +129,14 @@ public class MainActivity extends ListActivity {
     }
 
     static class ViewHolder {
+        @InjectView(R.id.text)
         TextView text;
+        @InjectView(R.id.image)
         ImageView image;
+        ViewHolder(View view){
+            ButterKnife.inject(this,view);
+        }
+
     }
 
 }
