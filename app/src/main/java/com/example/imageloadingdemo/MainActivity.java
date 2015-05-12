@@ -4,8 +4,12 @@ import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -19,6 +23,10 @@ import com.nostra13.universalimageloader.core.display.FadeInBitmapDisplayer;
 import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,40 +49,84 @@ public class MainActivity extends ListActivity {
             "https://koteshnavuluri.files.wordpress.com/2015/05/cry1.jpg",
             "https://koteshnavuluri.files.wordpress.com/2015/05/brahmanandam1.jpg",
             "https://koteshnavuluri.files.wordpress.com/2015/05/awesome1.jpg"};
+    private static final int SHARE = 143;
+    private DisplayImageOptions options;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        options = new DisplayImageOptions.Builder()
+                .showImageOnLoading(R.drawable.ic_launcher)
+                .showImageForEmptyUri(R.drawable.ic_launcher)
+                .showImageOnFail(R.drawable.ic_launcher)
+                .cacheInMemory(true)
+                .cacheOnDisk(true)
+                .considerExifParams(true).build();
         getListView().setAdapter(new ImageAdapter(this));
 
         getListView().setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent=new Intent(MainActivity.this,DetailActivity.class);
-                intent.putExtra(DetailActivity.EXTRA_URL,urls[position]);
+                Intent intent = new Intent(MainActivity.this, DetailActivity.class);
+                intent.putExtra(DetailActivity.EXTRA_URL, urls[position]);
                 startActivity(intent);
             }
         });
+        registerForContextMenu(getListView());
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        menu.add(0, SHARE, 0, "Share");
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item
+                .getMenuInfo();
+        switch (item.getItemId()) {
+            case SHARE:
+                Bitmap bitmap = ImageLoader.getInstance().loadImageSync(urls[info.position]);
+                try {
+                    shareImage(bitmap);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return true;
+            default:
+                return super.onContextItemSelected(item);
+        }
+    }
+
+
+    private void shareImage(Bitmap icon) throws IOException {
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("image/jpeg");
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        icon.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+        File f = new File(Environment.getExternalStorageDirectory() + File.separator + "temporary_file.jpg");
+        try {
+            f.createNewFile();
+            FileOutputStream fo = new FileOutputStream(f);
+            fo.write(bytes.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally{
+            bytes.flush();
+            bytes.close();
+        }
+        share.putExtra(Intent.EXTRA_STREAM, Uri.parse("file:///sdcard/temporary_file.jpg"));
+        startActivity(Intent.createChooser(share, "Share Image"));
     }
 
     private class ImageAdapter extends BaseAdapter {
 
         private LayoutInflater inflater;
 
-        private DisplayImageOptions options;
         private ImageLoadingListener animateFirstListener = new AnimateFirstDisplayListener();
 
         ImageAdapter(Context context) {
             inflater = LayoutInflater.from(context);
-
-            options = new DisplayImageOptions.Builder()
-                    .showImageOnLoading(R.drawable.ic_launcher)
-                    .showImageForEmptyUri(R.drawable.ic_launcher)
-                    .showImageOnFail(R.drawable.ic_launcher)
-                    .cacheInMemory(true)
-                    .cacheOnDisk(true)
-                    .considerExifParams(true).build();
         }
 
         @Override
@@ -133,8 +185,9 @@ public class MainActivity extends ListActivity {
         TextView text;
         @InjectView(R.id.image)
         ImageView image;
-        ViewHolder(View view){
-            ButterKnife.inject(this,view);
+
+        ViewHolder(View view) {
+            ButterKnife.inject(this, view);
         }
 
     }
